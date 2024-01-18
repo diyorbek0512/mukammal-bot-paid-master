@@ -15,6 +15,43 @@ confirmation_keyboard = InlineKeyboardMarkup(row_width=1)
 confirmation_keyboard.add(InlineKeyboardButton("Ishonch telefonlari ☎️", callback_data="phones"))
 
 
+class Form(StatesGroup):
+    name = State()
+    phone_number = State()
+    suggestions = State()
+    media = State()
+    ready_for_next = State()
+
+@dp.message_handler(state=Form.suggestions)
+async def process_suggestions(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['suggestions'] = message.text
+    await Form.media.set()
+    await message.reply("Ma'lumotingizga qo'shimcha rasm yoki video fayl yuboring : ")
+@dp.message_handler(content_types=['photo', 'video'], state=Form.media)
+async def process_media(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        choice = "Murojaat:" if data['choice'] == "contact" else "Fikr:"
+        caption = f"<b>{choice}</b>\nISM: {data['name']}\nTEL: {data['phone_number']}\nTAKLIFLAR: {data['suggestions']}"
+
+        for admin_id in config.ADMINS:
+            if message.photo:
+                await bot.send_photo(admin_id, message.photo[-1].file_id, caption=caption)
+            elif message.video:
+                await bot.send_video(admin_id, message.video.file_id, caption=caption)
+
+    # Ensure user gets the confirmation message with the Ishonch telefonlari button
+    await bot.send_message(
+        message.chat.id,
+        "✅ Murojaatingiz yuborildi!\nSizga tez orada javob qaytariladi",
+        reply_markup=confirmation_keyboard  # Add the keyboard here
+    )
+    await Form.ready_for_next.set()
+@dp.message_handler(content_types=types.ContentTypes.ANY, state=Form.media)
+async def process_invalid_media(message: types.Message, state: FSMContext):
+    await message.reply("Iltimos, rasm yoki video fayl yuboring. Boshqa turdagi fayllar qabul qilinmaydi.")
+
+
 
 
 @dp.callback_query_handler(lambda c: c.data == 'phones', state='*')
@@ -26,13 +63,6 @@ async def process_phones_button(callback_query: types.CallbackQuery):
     )
     await callback_query.answer()  # Important to give feedback that the button press was received
 
-
-class Form(StatesGroup):
-    name = State()
-    phone_number = State()
-    suggestions = State()
-    media = State()
-    ready_for_next = State()
 
 
 
@@ -90,38 +120,14 @@ async def process_name(message: types.Message, state: FSMContext):
         data['name'] = message.text
     await Form.next()
     await message.reply(f"Rahmat, {message.text}.\nMurojaat uchun telefon raqamingizni yuboring: ")
+
+
 @dp.message_handler(state=Form.phone_number)
 async def process_phone_number(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['phone_number'] = message.text
     await Form.next()
     await message.reply("Sizda qandaydir taklif yoki shikoyatlar bormi?")
-@dp.message_handler(state=Form.suggestions)
-async def process_suggestions(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['suggestions'] = message.text
-    await Form.media.set()
-    await message.reply("Ma'lumotingizga qo'shimcha rasm yoki video fayl yuboring : ")
-
-@dp.message_handler(content_types=['photo', 'video'], state=Form.media)
-async def process_media(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        choice = "Murojaat:" if data['choice'] == "contact" else "Fikr:"
-        caption = f"<b>{choice}</b>\nISM: {data['name']}\nTEL: {data['phone_number']}\nTAKLIFLAR: {data['suggestions']}"
-
-        for admin_id in config.ADMINS:
-            if message.photo:
-                await bot.send_photo(admin_id, message.photo[-1].file_id, caption=caption)
-            elif message.video:
-                await bot.send_video(admin_id, message.video.file_id, caption=caption)
-
-    await Form.ready_for_next.set()
-    # Send the confirmation message with the keyboard for "Ishonch telefonlari ☎️"
-    await bot.send_message(
-        message.chat.id,
-        "✅ Murojaatingiz yuborildi!\nSizga tez orada javob qaytariladi",
-        reply_markup=confirmation_keyboard  # Add the keyboard here
-    )
 
 
 
