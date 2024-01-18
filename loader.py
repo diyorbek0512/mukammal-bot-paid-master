@@ -11,6 +11,22 @@ bot = Bot(token=config.BOT_TOKEN, parse_mode=types.ParseMode.HTML)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
+confirmation_keyboard = InlineKeyboardMarkup(row_width=1)
+confirmation_keyboard.add(InlineKeyboardButton("Ishonch telefonlari ☎️", callback_data="phones"))
+
+
+
+
+@dp.callback_query_handler(lambda c: c.data == 'phones', state='*')
+async def process_phones_button(callback_query: types.CallbackQuery):
+    await bot.send_message(
+        callback_query.from_user.id,
+        "Telefon raqam: <u>+998 (67) 236-84-86</u>",
+        parse_mode=types.ParseMode.HTML
+    )
+    await callback_query.answer()  # Important to give feedback that the button press was received
+
+
 class Form(StatesGroup):
     name = State()
     phone_number = State()
@@ -37,9 +53,9 @@ async def process_callback_button(callback_query: types.CallbackQuery, state: FS
         data['choice'] = callback_query.data  # Storing the choice in the state
         await Form.suggestions.set()
         if callback_query.data == "contact":
-            await bot.send_message(callback_query.from_user.id, "Sizda qandaydir murojaat bormi?")
+            await bot.send_message(callback_query.from_user.id, "Murojaatingizni yozib qoldiring: ")
         else:
-            await bot.send_message(callback_query.from_user.id, "Sizning fikringizni eshitishdan mamnunmiz")
+            await bot.send_message(callback_query.from_user.id, "Fikringizni yozib qoldiring:")
     await callback_query.answer()  # Important to give feedback that the button press was received
 
 
@@ -49,7 +65,7 @@ async def process_callback_button(callback_query: types.CallbackQuery, state: FS
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.finish()  # Reset the state
     await Form.name.set()  # Set the state to the first step
-    await message.reply("Assalomu alaykum, iltimos, ism familiyangizni kiriting")
+    await message.reply("Assalomu alaykum! Botga hush kelibsiz! \nSiz ushbu bot orqali jamoat transporti xizmalaridan qoniqmagan taqdiringizda shikoyat va takliflaringizni qoldirishingiz mumkin\n\nIltimos, ism familiyangizni yozib, jo'nating:")
 
 
 
@@ -100,7 +116,14 @@ async def process_media(message: types.Message, state: FSMContext):
                 await bot.send_video(admin_id, message.video.file_id, caption=caption)
 
     await Form.ready_for_next.set()
-    await message.reply("✅  Murojaatingiz yuborildi!\nSizga tez orada javob qaytariladi")
+    # Send the confirmation message with the keyboard for "Ishonch telefonlari ☎️"
+    await bot.send_message(
+        message.chat.id,
+        "✅ Murojaatingiz yuborildi!\nSizga tez orada javob qaytariladi",
+        reply_markup=confirmation_keyboard  # Add the keyboard here
+    )
+
+
 
 
 @dp.message_handler(commands=['next'], state='*')
