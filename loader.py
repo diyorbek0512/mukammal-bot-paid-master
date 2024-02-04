@@ -40,7 +40,6 @@ async def process_media(message: types.Message, state: FSMContext):
             elif message.video:
                 await bot.send_video(admin_id, message.video.file_id, caption=caption)
 
-    # Ensure user gets the confirmation message with the Ishonch telefonlari button
     await bot.send_message(
         message.chat.id,
         "✅ Murojaatingiz yuborildi!\nSizga tez orada javob qaytariladi",
